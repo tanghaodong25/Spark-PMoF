@@ -1,0 +1,5 @@
+add_executable(data_allocator_benchmark DataAllocatorBenchmark.cc)
+target_link_libraries(data_allocator_benchmark pmpool)
+
+add_executable(data_server_benchmark DataServerBenchmark.cc)
+target_link_libraries(data_server_benchmark pmpool)

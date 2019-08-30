@@ -59,17 +59,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
   * @param detectCorrupt whether to detect any corruption in fetched blocks.
   */
 private[spark]
-final class RdmaShuffleBlockFetcherIterator(
-                                         context: TaskContext,
-                                         shuffleClient: ShuffleClient,
-                                         blockManager: BlockManager,
-                                         blocksByAddress: Seq[(BlockManagerId, Seq[(BlockId, Long)])],
-                                         streamWrapper: (BlockId, InputStream) => InputStream,
-                                         maxBytesInFlight: Long,
-                                         maxReqsInFlight: Int,
-                                         maxBlocksInFlightPerAddress: Int,
-                                         maxReqSizeShuffleToMem: Long,
-                                         detectCorrupt: Boolean)
+final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
+                                            shuffleClient: ShuffleClient,
+                                            blockManager: BlockManager,
+                                            blocksByAddress: Seq[(BlockManagerId, Seq[(BlockId, Long)])],
+                                            streamWrapper: (BlockId, InputStream) => InputStream,
+                                            maxBytesInFlight: Long,
+                                            maxReqsInFlight: Int,
+                                            maxBlocksInFlightPerAddress: Int,
+                                            maxReqSizeShuffleToMem: Long,
+                                            detectCorrupt: Boolean)
   extends Iterator[(BlockId, InputStream)] with TempFileManager with Logging {
 
   import RdmaShuffleBlockFetcherIterator._

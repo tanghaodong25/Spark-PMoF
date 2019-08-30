@@ -1,0 +1,6 @@
+table GetBlock {
+  shuffleId: ushort;
+  mapId: ushort;
+  startPartition: ushort;
+  endPartition: ushort;
+}

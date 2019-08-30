@@ -1,0 +1,12 @@
+struct BlockMetadata {
+  shuffleId: ushort;
+  mapId: ushort;
+  reduceId: ushort;
+  buffer: ulong;
+  size: ulong;
+  rkey: ulong;
+}
+
+table BlockMetadataMsg {
+  blockMetadata: [BlockMetadata];
+}

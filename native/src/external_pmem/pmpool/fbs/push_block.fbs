@@ -1,0 +1,8 @@
+table PushBlock {
+  shuffleId: ushort;
+  mapId: ushort;
+  reduceId: ushort;
+  address: ulong;
+  size: ulong;
+  rkey: ulong;
+}

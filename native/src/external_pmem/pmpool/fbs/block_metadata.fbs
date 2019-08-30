@@ -1,0 +1,16 @@
+struct PartitionMetadata {
+  shuffleId: ushort;
+  mapId: ushort;
+  reduceId: ushort;
+  buffer: ulong;
+  size: ulong;
+  rkey: ulong;
+}
+
+table BlockMetadata {
+  partitionMetadata: [PartitionMetadata];
+}
+
+table BlocksMetadata {
+  blockMetadata: [BlockMetadata];
+}

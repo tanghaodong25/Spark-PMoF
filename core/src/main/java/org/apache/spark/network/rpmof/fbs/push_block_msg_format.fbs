@@ -1,0 +1,8 @@
+table PushBlockMsg {
+  shuffleId: ushort;
+  mapId: ushort;
+  partitionId: ushort;
+  buffer: ulong;
+  size: ulong;
+  rkey: ulong;
+}

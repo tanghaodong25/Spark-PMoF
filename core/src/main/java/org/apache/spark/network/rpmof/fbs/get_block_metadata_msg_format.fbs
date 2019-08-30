@@ -1,0 +1,5 @@
+table GetBlockMetadataMsg {
+  shuffleId: ushort;
+  startPartition: ushort;
+  endPartition: ushort;
+}

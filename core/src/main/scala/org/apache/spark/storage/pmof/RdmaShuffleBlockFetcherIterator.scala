@@ -17,7 +17,7 @@ package org.apache.spark.storage.pmof
  * limitations under the License.
  */
 
-import java.io.{File, IOException, InputStream}
+import java.io.{IOException, InputStream}
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
@@ -25,7 +25,8 @@ import javax.annotation.concurrent.GuardedBy
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.buffer.{FileSegmentManagedBuffer, ManagedBuffer}
 import org.apache.spark.network.pmof._
-import org.apache.spark.network.shuffle.{ShuffleClient, TempFileManager}
+import org.apache.spark.network.shuffle.{DownloadFile, DownloadFileManager, ShuffleClient, SimpleDownloadFile}
+import org.apache.spark.network.util.TransportConf
 import org.apache.spark.shuffle.FetchFailedException
 import org.apache.spark.storage._
 import org.apache.spark.{SparkException, TaskContext}
@@ -63,14 +64,14 @@ private[spark]
 final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
                                             shuffleClient: ShuffleClient,
                                             blockManager: BlockManager,
-                                            blocksByAddress: Seq[(BlockManagerId, Seq[(BlockId, Long)])],
+                                            blocksByAddress: Iterator[(BlockManagerId, Seq[(BlockId, Long)])],
                                             streamWrapper: (BlockId, InputStream) => InputStream,
                                             maxBytesInFlight: Long,
                                             maxReqsInFlight: Int,
                                             maxBlocksInFlightPerAddress: Int,
                                             maxReqSizeShuffleToMem: Long,
                                             detectCorrupt: Boolean)
-  extends Iterator[(BlockId, InputStream)] with TempFileManager with Logging {
+  extends Iterator[(BlockId, InputStream)] with DownloadFileManager with Logging {
 
   import RdmaShuffleBlockFetcherIterator._
 
@@ -87,7 +88,7 @@ final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
     * deleted when cleanup. This is a layer of defensiveness against disk file leaks.
     */
   @GuardedBy("this")
-  private[this] val shuffleFilesSet = mutable.HashSet[File]()
+  private[this] val shuffleFilesSet = mutable.HashSet[DownloadFile]()
   private[this] val remoteRdmaRequestQueue = new LinkedBlockingQueue[RdmaRequest]()
   /**
     * Total number of blocks to fetch. This can be smaller than the total number of blocks
@@ -107,9 +108,9 @@ final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
     */
   @volatile private[this] var currentResult: SuccessFetchResult = _
   /** Current bytes in flight from our requests */
-  private[this] var bytesInFlight = new AtomicLong(0)
+  private[this] val bytesInFlight = new AtomicLong(0)
   /** Current number of requests in flight */
-  private[this] var reqsInFlight = new AtomicInteger(0)
+  private[this] val reqsInFlight = new AtomicInteger(0)
   /**
     * Whether the iterator is still active. If isZombie is true, the callback interface will no
     * longer place fetched blocks into [[results]].
@@ -120,7 +121,7 @@ final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
   initialize()
 
   def initialize(): Unit = {
-    context.addTaskCompletionListener(_ => cleanup())
+    context.addTaskCompletionListener[Unit](_ => cleanup())
 
     val remoteBlocksByAddress = blocksByAddress.filter(_._1.executorId != blockManager.blockManagerId.executorId)
     for ((address, blockInfos) <- blocksByAddress) {
@@ -133,7 +134,7 @@ final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
     startFetch(remoteBlocksByAddress)
   }
 
-  def startFetch(remoteBlocksByAddress: Seq[(BlockManagerId, Seq[(BlockId, Long)])]): Unit = {
+  def startFetch(remoteBlocksByAddress: Iterator[(BlockManagerId, Seq[(BlockId, Long)])]): Unit = {
     for ((blockManagerId, blockInfos) <- remoteBlocksByAddress) {
       startFetchMetadata(blockManagerId, blockInfos.filter(_._2 != 0).map(_._1).toArray)
     }
@@ -231,7 +232,7 @@ final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
     }
     shuffleFilesSet.foreach { file =>
       if (!file.delete()) {
-        logWarning("Failed to cleanup shuffle fetch temp file " + file.getAbsolutePath)
+        logWarning("Failed to cleanup shuffle fetch temp file ")
       }
     }
   }
@@ -246,11 +247,12 @@ final class RdmaShuffleBlockFetcherIterator(context: TaskContext,
     currentResult = null
   }
 
-  override def createTempFile(): File = {
-    blockManager.diskBlockManager.createTempLocalBlock()._2
+  override def createTempFile(transportConf: TransportConf): DownloadFile = {
+    new SimpleDownloadFile (
+      blockManager.diskBlockManager.createTempLocalBlock()._2, transportConf)
   }
 
-  override def registerTempFileToClean(file: File): Boolean = synchronized {
+  override def registerTempFileToClean(file: DownloadFile): Boolean = synchronized {
     if (isZombie) {
       false
     } else {

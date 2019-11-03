@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.spark.shuffle
+package org.apache.spark.shuffle.pmof
 
 import org.apache.spark._
 import org.apache.spark.internal.{Logging, config}
 import org.apache.spark.serializer.SerializerManager
+import org.apache.spark.shuffle.{BaseShuffleHandle, ShuffleReader}
 import org.apache.spark.storage.{BlockManager, ShuffleBlockFetcherIterator}
 import org.apache.spark.util.CompletionIterator
 import org.apache.spark.util.collection.pmof.PmemExternalSorter
@@ -54,12 +55,12 @@ private[spark] class BaseShuffleReader[K, C](handle: BaseShuffleHandle[K, _, C],
       SparkEnv.get.conf.getInt("spark.reducer.maxReqsInFlight", Int.MaxValue),
       SparkEnv.get.conf.get(config.REDUCER_MAX_BLOCKS_IN_FLIGHT_PER_ADDRESS),
       SparkEnv.get.conf.get(config.MAX_REMOTE_BLOCK_SIZE_FETCH_TO_MEM),
-      SparkEnv.get.conf.getBoolean("spark.shuffle.detectCorrupt", true))
+      SparkEnv.get.conf.getBoolean("spark.shuffle.detectCorrupt", defaultValue = true))
 
     val serializerInstance = dep.serializer.newInstance()
 
     // Create a key/value iterator for each stream
-    val recordIter = wrappedStreams.flatMap { case (blockId, wrappedStream) =>
+    val recordIter = wrappedStreams.flatMap { case (_, wrappedStream) =>
       // Note: the asKeyValueIterator below wraps a key/value iterator inside of a
       // NextIterator. The NextIterator makes sure that close() is called on the
       // underlying InputStream when all records have been read.
@@ -98,14 +99,14 @@ private[spark] class BaseShuffleReader[K, C](handle: BaseShuffleHandle[K, _, C],
     // Sort the output if there is a sort ordering defined.
     val resultIter = dep.keyOrdering match {
       case Some(keyOrd: Ordering[K]) =>
-        assert(pmofConf.enablePmem == true)
+        assert(pmofConf.enablePmem)
         // Create an ExternalSorter to sort the data.
         val sorter =
           new PmemExternalSorter[K, C, C](context, handle, pmofConf, ordering = Some(keyOrd), serializer = dep.serializer)
         logDebug("call PmemExternalSorter.insertAll for shuffle_0_" + handle.shuffleId + "_[" + startPartition + "," + endPartition + "]")
         sorter.insertAll(aggregatedIter)
         // Use completion callback to stop sorter if task was finished/cancelled.
-        context.addTaskCompletionListener(_ => {
+        context.addTaskCompletionListener[Unit](_ => {
           sorter.stop()
         })
         CompletionIterator[Product2[K, C], Iterator[Product2[K, C]]](sorter.iterator, sorter.stop())

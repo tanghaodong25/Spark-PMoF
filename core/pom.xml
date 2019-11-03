@@ -19,19 +19,19 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.11</artifactId>
-            <version>2.3.0</version>
+            <artifactId>spark-core_2.12</artifactId>
+            <version>2.4.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-network-common_2.11</artifactId>
-            <version>2.3.0</version>
+            <artifactId>spark-network-common_2.12</artifactId>
+            <version>2.4.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.11</artifactId>
-            <version>2.3.0</version>
+            <artifactId>spark-core_2.12</artifactId>
+            <version>2.4.0</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
@@ -47,22 +47,28 @@
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.11</artifactId>
+            <artifactId>scalatest_2.12</artifactId>
             <version>3.0.3</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.12.10</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>2.23.4</version>
             <scope>test</scope>
-        </dependency> 
+        </dependency>
     </dependencies>
     <build>
         <plugins>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
+								<version>4.0.2</version>
                 <executions>
                     <execution>
                         <id>scala-compile-first</id>
@@ -80,6 +86,22 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <compilerPlugins>
+                        <compilerPlugin>
+                            <groupId>org.scalameta</groupId>
+                            <artifactId>semanticdb-scalac_2.12.10</artifactId>
+                            <version>4.2.3</version>
+                        </compilerPlugin>
+                    </compilerPlugins>
+                    <args>
+                        <arg>-P:semanticdb:synthetics:on</arg>
+                        <arg>-P:semanticdb:failures:warning</arg>
+                        <arg>-P:semanticdb:sourceroot:${maven.multiModuleProjectDirectory}</arg>
+                        <arg>-Yrangepos</arg>
+                        <arg>-Xplugin-require:semanticdb</arg>
+                    </args>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -139,14 +161,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                </configuration>
-            </plugin>
         <plugin>
           <groupId>org.scalatest</groupId>
           <artifactId>scalatest-maven-plugin</artifactId>
@@ -165,7 +179,7 @@
               -->
               <SPARK_DIST_CLASSPATH>${test_classpath}</SPARK_DIST_CLASSPATH>
               <SPARK_PREPEND_CLASSES>1</SPARK_PREPEND_CLASSES>
-              <SPARK_SCALA_VERSION>2.11</SPARK_SCALA_VERSION>
+              <SPARK_SCALA_VERSION>2.12</SPARK_SCALA_VERSION>
               <SPARK_TESTING>1</SPARK_TESTING>
               <JAVA_HOME>${test.java.home}</JAVA_HOME>
             </environmentVariables>

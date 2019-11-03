@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.buffer.ManagedBuffer
-import org.apache.spark.storage.pmof.{PersistentMemoryPool, PmemInputStream}
 
 class PmemManagedBuffer(pmHandler: PersistentMemoryHandler, blockId: String) extends ManagedBuffer with Logging {
   var inputStream: InputStream = _
